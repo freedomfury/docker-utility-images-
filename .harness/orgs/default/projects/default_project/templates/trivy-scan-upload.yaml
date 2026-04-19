@@ -23,7 +23,7 @@ template:
           name: Trivy Scan
           identifier: TrivyScan
           spec:
-            connectorRef: docker-default
+            connectorRef: dockerdefault
             image: aquasec/trivy:latest
             shell: Bash
             envVariables:
@@ -49,7 +49,7 @@ template:
           name: Upload Trivy Report
           identifier: UploadTrivyReport
           spec:
-            connectorRef: docker-default
+            connectorRef: dockerdefault
             image: minio/mc:latest
             shell: Bash
             envVariables:

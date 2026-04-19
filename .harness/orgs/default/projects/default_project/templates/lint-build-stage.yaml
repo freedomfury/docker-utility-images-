@@ -28,7 +28,7 @@ template:
               name: Matrix Check and Shellcheck
               identifier: MatrixCheckAndShellcheck
               spec:
-                connectorRef: docker-default
+                connectorRef: dockerdefault
                 image: koalaman/shellcheck-alpine:stable
                 shell: Sh
                 command: |-
@@ -39,7 +39,7 @@ template:
               name: Lint
               identifier: Lint
               spec:
-                connectorRef: docker-default
+                connectorRef: dockerdefault
                 image: hadolint/hadolint:latest
                 shell: Bash
                 envVariables:

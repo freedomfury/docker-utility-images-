@@ -51,7 +51,7 @@ pipeline:
                   name: Build
                   identifier: Build
                   spec:
-                    connectorRef: docker-default
+                    connectorRef: dockerdefault
                     image: docker:27-cli
                     shell: Bash
                     envVariables:
@@ -84,7 +84,7 @@ pipeline:
                   name: Push
                   identifier: Push
                   spec:
-                    connectorRef: docker-default
+                    connectorRef: dockerdefault
                     image: docker:27-cli
                     shell: Bash
                     envVariables:
