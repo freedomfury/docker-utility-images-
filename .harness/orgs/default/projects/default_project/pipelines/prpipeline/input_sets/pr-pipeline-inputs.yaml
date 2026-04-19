@@ -1,6 +1,6 @@
 inputSet:
-  name: pr-pipeline-input-set
-  identifier: prpipelineinputset
+  name: pr-pipeline-inputs
+  identifier: prpipelineinputs
   projectIdentifier: default_project
   orgIdentifier: default
   pipeline:

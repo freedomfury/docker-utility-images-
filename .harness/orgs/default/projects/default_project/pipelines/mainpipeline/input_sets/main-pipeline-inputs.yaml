@@ -1,8 +1,8 @@
 inputSet:
-  name: main-pipeline-input-set
-  identifier: mainpipelineinputset
-  projectIdentifier: default_project
+  name: main-pipeline-inputs
+  identifier: mainpipelineinputs
   orgIdentifier: default
+  projectIdentifier: default_project
   pipeline:
     identifier: mainpipeline
     variables:
