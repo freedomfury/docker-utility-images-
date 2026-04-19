@@ -14,7 +14,7 @@ template:
         enabled: true
         override: true
       buildIntelligence:
-        enabled: true
+        enabled: false
       platform:
         os: Linux
         arch: Amd64
