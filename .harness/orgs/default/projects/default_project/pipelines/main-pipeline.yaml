@@ -4,6 +4,10 @@ pipeline:
   projectIdentifier: default_project
   orgIdentifier: default
   tags: {}
+  variables:
+    - name: trigger_input_placeholder
+      type: String
+      value: <+input>
   properties:
     ci:
       codebase:
