@@ -41,7 +41,7 @@ template:
               spec:
                 connectorRef: dockerdefault
                 image: hadolint/hadolint:latest
-                shell: Bash
+                shell: Sh
                 envVariables:
                   HA_CONTAINER: <+matrix.container>
                 command: hadolint "$HA_CONTAINER/Dockerfile"
