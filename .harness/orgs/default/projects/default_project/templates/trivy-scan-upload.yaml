@@ -3,6 +3,7 @@ template:
   identifier: trivyscanupload
   versionLabel: "1"
   type: StepGroup
+  stageType: CI
   projectIdentifier: default_project
   orgIdentifier: default
   spec:
