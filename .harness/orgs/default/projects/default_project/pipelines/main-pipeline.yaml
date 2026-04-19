@@ -44,10 +44,10 @@ pipeline:
         spec:
           cloneCodebase: true
           caching:
-            enabled: true
-            override: true
+            enabled: false
+            override: false
           buildIntelligence:
-            enabled: true
+            enabled: false
           platform:
             os: Linux
             arch: Amd64
