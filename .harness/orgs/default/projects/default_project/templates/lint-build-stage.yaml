@@ -1,0 +1,46 @@
+template:
+  name: lint-build-stage
+  identifier: lintbuildstage
+  versionLabel: "1"
+  type: Stage
+  projectIdentifier: default_project
+  orgIdentifier: default
+  spec:
+    type: CI
+    spec:
+      cloneCodebase: true
+      caching:
+        enabled: true
+        override: true
+      buildIntelligence:
+        enabled: true
+      platform:
+        os: Linux
+        arch: Amd64
+      runtime:
+        type: Docker
+        spec: {}
+      execution:
+        steps:
+          - step:
+              type: Run
+              name: Matrix Check and Shellcheck
+              identifier: MatrixCheckAndShellcheck
+              spec:
+                connectorRef: docker-default
+                image: koalaman/shellcheck-alpine:stable
+                shell: Sh
+                command: |-
+                  sh bin/check-matrix.sh
+                  shellcheck lib/build-utils.sh bin/check-matrix.sh
+          - step:
+              type: Run
+              name: Lint
+              identifier: Lint
+              spec:
+                connectorRef: docker-default
+                image: hadolint/hadolint:latest
+                shell: Bash
+                envVariables:
+                  HA_CONTAINER: <+matrix.container>
+                command: hadolint "$HA_CONTAINER/Dockerfile"

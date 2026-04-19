@@ -1,0 +1,99 @@
+pipeline:
+  name: scheduled-pipeline
+  identifier: scheduledpipeline
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        repoName: docker-utility-images
+        build:
+          type: branch
+          spec:
+            branch: main
+  trigger:
+    type: Scheduled
+    spec:
+      type: Cron
+      spec:
+        expression: "0 2 * * 1"
+  stages:
+    - stage:
+        name: Rebuild All
+        identifier: RebuildAll
+        description: Unconditional rebuild and push of all containers for security refresh
+        type: CI
+        strategy:
+          matrix:
+            container:
+              - hello-a
+              - hello-b
+              - hello-c
+          maxConcurrency: 10
+        spec:
+          cloneCodebase: true
+          caching:
+            enabled: true
+            override: true
+          buildIntelligence:
+            enabled: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Docker
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Build
+                  identifier: Build
+                  spec:
+                    connectorRef: docker-default
+                    image: docker:27-cli
+                    shell: Bash
+                    envVariables:
+                      HA_CONTAINER: <+matrix.container>
+                      HA_DOCKER_USERNAME: <+project.variables.dockeruser>
+                    command: |-
+                      source lib/build-utils.sh
+                      export BUILD_HASH=$(find "$HA_CONTAINER" -type f | sort \
+                        | xargs sha256sum | sha256sum | awk '{print $1}')
+                      do_build "$HA_CONTAINER" "$HA_DOCKER_USERNAME"
+              - stepGroup:
+                  name: Trivy Scan and Upload
+                  identifier: TrivyScanAndUpload
+                  template:
+                    templateRef: trivyscanupload
+                    versionLabel: "1"
+                    templateInputs:
+                      spec:
+                        inputs:
+                          - name: always_run
+                            value: "true"
+                          - name: docker_username
+                            value: <+project.variables.dockeruser>
+                          - name: minio_url
+                            value: <+project.variables.miniourl>
+                          - name: minio_user
+                            value: <+project.variables.miniouser>
+              - step:
+                  type: Run
+                  name: Push
+                  identifier: Push
+                  spec:
+                    connectorRef: docker-default
+                    image: docker:27-cli
+                    shell: Bash
+                    envVariables:
+                      HA_CONTAINER: <+matrix.container>
+                      HA_DOCKER_HUB_TOKEN: <+secrets.getValue("docker-hub-token")>
+                      HA_DOCKER_USERNAME: <+project.variables.dockeruser>
+                    command: |-
+                      echo "$HA_DOCKER_HUB_TOKEN" | docker login -u "$HA_DOCKER_USERNAME" --password-stdin
+                      source lib/build-utils.sh
+                      do_push "$HA_CONTAINER" "$HA_DOCKER_USERNAME"
+  delegateSelectors:
+    - image-flow-delegate

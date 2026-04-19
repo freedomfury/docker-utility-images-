@@ -1,0 +1,74 @@
+template:
+  name: trivy-scan-upload
+  identifier: trivyscanupload
+  versionLabel: "1"
+  type: StepGroup
+  projectIdentifier: default_project
+  orgIdentifier: default
+  spec:
+    inputs:
+      - name: always_run
+        type: String
+        default: "true"
+      - name: docker_username
+        type: String
+      - name: minio_url
+        type: String
+      - name: minio_user
+        type: String
+    steps:
+      - step:
+          type: Run
+          name: Trivy Scan
+          identifier: TrivyScan
+          spec:
+            connectorRef: docker-default
+            image: aquasec/trivy:latest
+            shell: Bash
+            envVariables:
+              HA_CONTAINER: <+matrix.container>
+              HA_ALWAYS_RUN: <+inputs.always_run>
+              HA_DOCKER_USERNAME: <+inputs.docker_username>
+            command: |-
+              if [ "$HA_ALWAYS_RUN" = "false" ]; then
+                source /harness/build-state.env
+                if [ "$BUILD_NEEDED" != "true" ]; then
+                  echo "[$HA_CONTAINER] Skipping Trivy scan, no build performed."
+                  exit 0
+                fi
+              fi
+              trivy image \
+                --exit-code 0 \
+                --format json \
+                --output "/harness/trivy-report-${HA_CONTAINER}.json" \
+                "$HA_DOCKER_USERNAME/$HA_CONTAINER:latest"
+              echo "[$HA_CONTAINER] Trivy scan complete."
+      - step:
+          type: Run
+          name: Upload Trivy Report
+          identifier: UploadTrivyReport
+          spec:
+            connectorRef: docker-default
+            image: minio/mc:latest
+            shell: Bash
+            envVariables:
+              HA_CONTAINER: <+matrix.container>
+              HA_ALWAYS_RUN: <+inputs.always_run>
+              HA_MINIO_URL: <+inputs.minio_url>
+              HA_MINIO_USER: <+inputs.minio_user>
+              HA_MINIO_PASS: <+secrets.getValue("minio-pass")>
+            command: |-
+              if [ "$HA_ALWAYS_RUN" = "false" ]; then
+                source /harness/build-state.env
+                if [ "$BUILD_NEEDED" != "true" ]; then
+                  echo "[$HA_CONTAINER] Skipping upload, no build performed."
+                  exit 0
+                fi
+              fi
+              mc alias set minio "$HA_MINIO_URL" "$HA_MINIO_USER" "$HA_MINIO_PASS"
+              mc cp "/harness/trivy-report-${HA_CONTAINER}.json" \
+                "minio/global/harness/trivy/${HA_CONTAINER}/report.json"
+              echo "[$HA_CONTAINER] Trivy report uploaded."
+              cat "/harness/trivy-report-${HA_CONTAINER}.json"
+              PRESIGNED_URL=$(mc share download --expire 168h "minio/global/harness/trivy/${HA_CONTAINER}/report.json" | grep -oP 'Share: \K\S+')
+              echo "##[artifact] url=$PRESIGNED_URL"

@@ -1,0 +1,113 @@
+pipeline:
+  name: main-pipeline
+  identifier: mainpipeline
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        repoName: docker-utility-images
+        build:
+          type: branch
+          spec:
+            branch: main
+  stages:
+    - stage:
+        name: Lint
+        identifier: Lint
+        strategy:
+          matrix:
+            container:
+              - hello-a
+              - hello-b
+              - hello-c
+          maxConcurrency: 10
+        template:
+          templateRef: lintbuildstage
+          versionLabel: "1"
+    - stage:
+        name: Build and Push
+        identifier: BuildAndPush
+        type: CI
+        strategy:
+          matrix:
+            container:
+              - hello-a
+              - hello-b
+              - hello-c
+          maxConcurrency: 10
+        spec:
+          cloneCodebase: true
+          caching:
+            enabled: true
+            override: true
+          buildIntelligence:
+            enabled: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Docker
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Build If Changed
+                  identifier: BuildIfChanged
+                  spec:
+                    connectorRef: docker-default
+                    image: docker:27-cli
+                    shell: Bash
+                    envVariables:
+                      HA_CONTAINER: <+matrix.container>
+                      HA_DOCKER_USERNAME: <+project.variables.dockeruser>
+                    command: |-
+                      source lib/build-utils.sh
+                      if needs_build "$HA_CONTAINER" "$HA_DOCKER_USERNAME"; then
+                        do_build "$HA_CONTAINER" "$HA_DOCKER_USERNAME"
+                        echo "BUILD_NEEDED=true" > /harness/build-state.env
+                      else
+                        echo "BUILD_NEEDED=false" > /harness/build-state.env
+                      fi
+              - stepGroup:
+                  name: Trivy Scan and Upload
+                  identifier: TrivyScanAndUpload
+                  template:
+                    templateRef: trivyscanupload
+                    versionLabel: "1"
+                    templateInputs:
+                      spec:
+                        inputs:
+                          - name: always_run
+                            value: "false"
+                          - name: docker_username
+                            value: <+project.variables.dockeruser>
+                          - name: minio_url
+                            value: <+project.variables.miniourl>
+                          - name: minio_user
+                            value: <+project.variables.miniouser>
+              - step:
+                  type: Run
+                  name: Push
+                  identifier: Push
+                  spec:
+                    connectorRef: docker-default
+                    image: docker:27-cli
+                    shell: Bash
+                    envVariables:
+                      HA_CONTAINER: <+matrix.container>
+                      HA_DOCKER_HUB_TOKEN: <+secrets.getValue("docker-hub-token")>
+                      HA_DOCKER_USERNAME: <+project.variables.dockeruser>
+                    command: |-
+                      source /harness/build-state.env
+                      if [ "$BUILD_NEEDED" = "true" ]; then
+                        echo "$HA_DOCKER_HUB_TOKEN" | docker login -u "$HA_DOCKER_USERNAME" --password-stdin
+                        source lib/build-utils.sh
+                        do_push "$HA_CONTAINER" "$HA_DOCKER_USERNAME"
+                      else
+                        echo "[$HA_CONTAINER] Skipping push, no build performed."
+                      fi
+  delegateSelectors:
+    - image-flow-delegate
