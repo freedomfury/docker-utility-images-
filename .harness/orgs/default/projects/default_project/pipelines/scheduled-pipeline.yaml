@@ -69,7 +69,6 @@ pipeline:
                     templateRef: trivyscanupload
                     versionLabel: "1"
                     templateInputs:
-                      type: StepGroup
                       variables:
                         - name: always_run
                           type: String
