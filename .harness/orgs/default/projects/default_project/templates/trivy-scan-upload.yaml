@@ -30,13 +30,9 @@ template:
               HA_CONTAINER: <+matrix.container>
               HA_ALWAYS_RUN: <+inputs.always_run>
               HA_DOCKER_USERNAME: <+inputs.docker_username>
-              HA_DOCKER_USERNAME_FALLBACK: <+project.variables.dockeruser>
             command: |-
               STATE_FILE="${HARNESS_WORKSPACE:-.}/build-state.env"
               REPORT_FILE="${HARNESS_WORKSPACE:-.}/trivy-report-${HA_CONTAINER}.json"
-              if [ -z "$HA_DOCKER_USERNAME" ] || [ "$HA_DOCKER_USERNAME" = "null" ]; then
-                HA_DOCKER_USERNAME="$HA_DOCKER_USERNAME_FALLBACK"
-              fi
               if [ "$HA_ALWAYS_RUN" = "false" ]; then
                 . "$STATE_FILE"
                 if [ "$BUILD_NEEDED" != "true" ]; then
@@ -63,18 +59,10 @@ template:
               HA_ALWAYS_RUN: <+inputs.always_run>
               HA_MINIO_URL: <+inputs.minio_url>
               HA_MINIO_USER: <+inputs.minio_user>
-              HA_MINIO_URL_FALLBACK: <+project.variables.miniourl>
-              HA_MINIO_USER_FALLBACK: <+project.variables.miniouser>
               HA_MINIO_PASS: <+secrets.getValue("minio-pass")>
             command: |-
               STATE_FILE="${HARNESS_WORKSPACE:-.}/build-state.env"
               REPORT_FILE="${HARNESS_WORKSPACE:-.}/trivy-report-${HA_CONTAINER}.json"
-              if [ -z "$HA_MINIO_URL" ] || [ "$HA_MINIO_URL" = "null" ]; then
-                HA_MINIO_URL="$HA_MINIO_URL_FALLBACK"
-              fi
-              if [ -z "$HA_MINIO_USER" ] || [ "$HA_MINIO_USER" = "null" ]; then
-                HA_MINIO_USER="$HA_MINIO_USER_FALLBACK"
-              fi
               if [ "$HA_ALWAYS_RUN" = "false" ]; then
                 . "$STATE_FILE"
                 if [ "$BUILD_NEEDED" != "true" ]; then
