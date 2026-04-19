@@ -1,27 +1,28 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # bin/check-matrix.sh
 
-MATRIX_LIST=("hello-a" "hello-b" "hello-c")
-EXCLUDED=("lib" "bin" ".harness" ".git" "docs")
-MISSING=()
+MATRIX_LIST="hello-a hello-b hello-c"
+EXCLUDED="lib bin .harness .git docs"
+MISSING=""
 
 for dir in */; do
   container=$(basename "$dir")
 
   # Skip known non-container directories
-  if [[ " ${EXCLUDED[*]} " =~ " ${container} " ]]; then
-    continue
-  fi
+  case " $EXCLUDED " in
+    *" $container "*) continue ;;
+  esac
 
   # Check if it is in the matrix
-  if [[ ! " ${MATRIX_LIST[*]} " =~ " ${container} " ]]; then
-    MISSING+=("$container")
-  fi
+  case " $MATRIX_LIST " in
+    *" $container "*) ;;
+    *) MISSING="$MISSING $container" ;;
+  esac
 done
 
-if [ ${#MISSING[@]} -gt 0 ]; then
+if [ -n "$MISSING" ]; then
   echo "ERROR: The following container folders are not declared in the pipeline matrix:"
-  for m in "${MISSING[@]}"; do
+  for m in $MISSING; do
     echo "  - $m"
   done
   echo ""

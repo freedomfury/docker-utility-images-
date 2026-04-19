@@ -32,7 +32,7 @@ template:
                 image: koalaman/shellcheck-alpine:stable
                 shell: Sh
                 command: |-
-                  bash bin/check-matrix.sh
+                  sh bin/check-matrix.sh
                   shellcheck lib/build-utils.sh bin/check-matrix.sh
           - step:
               type: Run
