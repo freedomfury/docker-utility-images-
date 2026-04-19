@@ -1,0 +1,14 @@
+inputSet:
+  name: main-pipeline-input-set
+  identifier: mainpipelineinputset
+  projectIdentifier: default_project
+  orgIdentifier: default
+  pipeline:
+    identifier: mainpipeline
+    properties:
+      ci:
+        codebase:
+          build:
+            type: branch
+            spec:
+              branch: main
