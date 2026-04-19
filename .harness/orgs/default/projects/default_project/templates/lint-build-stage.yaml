@@ -3,6 +3,7 @@ template:
   identifier: lintbuildstage
   versionLabel: "1"
   type: Stage
+  stageType: CI
   projectIdentifier: default_project
   orgIdentifier: default
   spec:
