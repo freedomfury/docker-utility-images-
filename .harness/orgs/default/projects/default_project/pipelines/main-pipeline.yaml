@@ -63,12 +63,12 @@ pipeline:
                   spec:
                     connectorRef: dockerdefault
                     image: docker:27-cli
-                    shell: Bash
+                    shell: Sh
                     envVariables:
                       HA_CONTAINER: <+matrix.container>
                       HA_DOCKER_USERNAME: <+project.variables.dockeruser>
                     command: |-
-                      source lib/build-utils.sh
+                      . lib/build-utils.sh
                       if needs_build "$HA_CONTAINER" "$HA_DOCKER_USERNAME"; then
                         do_build "$HA_CONTAINER" "$HA_DOCKER_USERNAME"
                         echo "BUILD_NEEDED=true" > /harness/build-state.env
@@ -105,16 +105,16 @@ pipeline:
                   spec:
                     connectorRef: dockerdefault
                     image: docker:27-cli
-                    shell: Bash
+                    shell: Sh
                     envVariables:
                       HA_CONTAINER: <+matrix.container>
                       HA_DOCKER_HUB_TOKEN: <+secrets.getValue("docker-hub-token")>
                       HA_DOCKER_USERNAME: <+project.variables.dockeruser>
                     command: |-
-                      source /harness/build-state.env
+                      . /harness/build-state.env
                       if [ "$BUILD_NEEDED" = "true" ]; then
                         echo "$HA_DOCKER_HUB_TOKEN" | docker login -u "$HA_DOCKER_USERNAME" --password-stdin
-                        source lib/build-utils.sh
+                        . lib/build-utils.sh
                         do_push "$HA_CONTAINER" "$HA_DOCKER_USERNAME"
                       else
                         echo "[$HA_CONTAINER] Skipping push, no build performed."
