@@ -53,12 +53,12 @@ pipeline:
                   spec:
                     connectorRef: dockerdefault
                     image: docker:27-cli
-                    shell: Bash
+                    shell: Sh
                     envVariables:
                       HA_CONTAINER: <+matrix.container>
                       HA_DOCKER_USERNAME: <+project.variables.dockeruser>
                     command: |-
-                      source lib/build-utils.sh
+                      . lib/build-utils.sh
                       export BUILD_HASH=$(find "$HA_CONTAINER" -type f | sort \
                         | xargs sha256sum | sha256sum | awk '{print $1}')
                       do_build "$HA_CONTAINER" "$HA_DOCKER_USERNAME"
@@ -86,14 +86,14 @@ pipeline:
                   spec:
                     connectorRef: dockerdefault
                     image: docker:27-cli
-                    shell: Bash
+                    shell: Sh
                     envVariables:
                       HA_CONTAINER: <+matrix.container>
                       HA_DOCKER_HUB_TOKEN: <+secrets.getValue("docker-hub-token")>
                       HA_DOCKER_USERNAME: <+project.variables.dockeruser>
                     command: |-
                       echo "$HA_DOCKER_HUB_TOKEN" | docker login -u "$HA_DOCKER_USERNAME" --password-stdin
-                      source lib/build-utils.sh
+                      . lib/build-utils.sh
                       do_push "$HA_CONTAINER" "$HA_DOCKER_USERNAME"
   delegateSelectors:
     - image-flow-delegate

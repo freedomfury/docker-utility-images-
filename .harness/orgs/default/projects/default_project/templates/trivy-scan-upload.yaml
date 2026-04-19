@@ -25,14 +25,16 @@ template:
           spec:
             connectorRef: dockerdefault
             image: aquasec/trivy:latest
-            shell: Bash
+            shell: Sh
             envVariables:
               HA_CONTAINER: <+matrix.container>
               HA_ALWAYS_RUN: <+inputs.always_run>
               HA_DOCKER_USERNAME: <+inputs.docker_username>
             command: |-
+              STATE_FILE="${HARNESS_WORKSPACE:-.}/build-state.env"
+              REPORT_FILE="${HARNESS_WORKSPACE:-.}/trivy-report-${HA_CONTAINER}.json"
               if [ "$HA_ALWAYS_RUN" = "false" ]; then
-                source /harness/build-state.env
+                . "$STATE_FILE"
                 if [ "$BUILD_NEEDED" != "true" ]; then
                   echo "[$HA_CONTAINER] Skipping Trivy scan, no build performed."
                   exit 0
@@ -41,7 +43,7 @@ template:
               trivy image \
                 --exit-code 0 \
                 --format json \
-                --output "/harness/trivy-report-${HA_CONTAINER}.json" \
+                --output "$REPORT_FILE" \
                 "$HA_DOCKER_USERNAME/$HA_CONTAINER:latest"
               echo "[$HA_CONTAINER] Trivy scan complete."
       - step:
@@ -51,7 +53,7 @@ template:
           spec:
             connectorRef: dockerdefault
             image: minio/mc:latest
-            shell: Bash
+            shell: Sh
             envVariables:
               HA_CONTAINER: <+matrix.container>
               HA_ALWAYS_RUN: <+inputs.always_run>
@@ -59,17 +61,19 @@ template:
               HA_MINIO_USER: <+inputs.minio_user>
               HA_MINIO_PASS: <+secrets.getValue("minio-pass")>
             command: |-
+              STATE_FILE="${HARNESS_WORKSPACE:-.}/build-state.env"
+              REPORT_FILE="${HARNESS_WORKSPACE:-.}/trivy-report-${HA_CONTAINER}.json"
               if [ "$HA_ALWAYS_RUN" = "false" ]; then
-                source /harness/build-state.env
+                . "$STATE_FILE"
                 if [ "$BUILD_NEEDED" != "true" ]; then
                   echo "[$HA_CONTAINER] Skipping upload, no build performed."
                   exit 0
                 fi
               fi
               mc alias set minio "$HA_MINIO_URL" "$HA_MINIO_USER" "$HA_MINIO_PASS"
-              mc cp "/harness/trivy-report-${HA_CONTAINER}.json" \
+              mc cp "$REPORT_FILE" \
                 "minio/global/harness/trivy/${HA_CONTAINER}/report.json"
               echo "[$HA_CONTAINER] Trivy report uploaded."
-              cat "/harness/trivy-report-${HA_CONTAINER}.json"
+              cat "$REPORT_FILE"
               PRESIGNED_URL=$(mc share download --expire 168h "minio/global/harness/trivy/${HA_CONTAINER}/report.json" | grep -oP 'Share: \K\S+')
               echo "##[artifact] url=$PRESIGNED_URL"

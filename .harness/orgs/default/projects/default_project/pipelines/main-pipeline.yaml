@@ -68,12 +68,13 @@ pipeline:
                       HA_CONTAINER: <+matrix.container>
                       HA_DOCKER_USERNAME: <+project.variables.dockeruser>
                     command: |-
+                      STATE_FILE="${HARNESS_WORKSPACE:-.}/build-state.env"
                       . lib/build-utils.sh
                       if needs_build "$HA_CONTAINER" "$HA_DOCKER_USERNAME"; then
                         do_build "$HA_CONTAINER" "$HA_DOCKER_USERNAME"
-                        echo "BUILD_NEEDED=true" > /harness/build-state.env
+                        echo "BUILD_NEEDED=true" > "$STATE_FILE"
                       else
-                        echo "BUILD_NEEDED=false" > /harness/build-state.env
+                        echo "BUILD_NEEDED=false" > "$STATE_FILE"
                       fi
               - stepGroup:
                   name: Trivy Scan and Upload
@@ -111,7 +112,8 @@ pipeline:
                       HA_DOCKER_HUB_TOKEN: <+secrets.getValue("docker-hub-token")>
                       HA_DOCKER_USERNAME: <+project.variables.dockeruser>
                     command: |-
-                      . /harness/build-state.env
+                      STATE_FILE="${HARNESS_WORKSPACE:-.}/build-state.env"
+                      . "$STATE_FILE"
                       if [ "$BUILD_NEEDED" = "true" ]; then
                         echo "$HA_DOCKER_HUB_TOKEN" | docker login -u "$HA_DOCKER_USERNAME" --password-stdin
                         . lib/build-utils.sh

@@ -17,10 +17,12 @@ needs_build() {
     | xargs sha256sum | sha256sum | awk '{print $1}')
 
   local last_hash
-  last_hash=$(skopeo inspect "docker://${image}" 2>/dev/null \
-    | jq -r '.Labels["build.source.hash"] // "none"')
+  last_hash=$(skopeo inspect --format '{{ index .Labels "build.source.hash" }}' "docker://${image}" 2>/dev/null || true)
+  if [ -z "$last_hash" ] || [ "$last_hash" = "<no value>" ]; then
+    last_hash="none"
+  fi
 
-  if [ "$current_hash" == "$last_hash" ]; then
+  if [ "$current_hash" = "$last_hash" ]; then
     echo "[${container}] No changes detected, skipping build."
     return 1
   fi
