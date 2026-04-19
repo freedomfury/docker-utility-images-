@@ -7,16 +7,6 @@ template:
   orgIdentifier: default
   spec:
     stageType: CI
-    inputs:
-      - name: always_run
-        type: String
-        default: "true"
-      - name: docker_username
-        type: String
-      - name: minio_url
-        type: String
-      - name: minio_user
-        type: String
     steps:
       - step:
           type: Run
@@ -28,8 +18,8 @@ template:
             shell: Sh
             envVariables:
               HA_CONTAINER: <+matrix.container>
-              HA_ALWAYS_RUN: <+inputs.always_run>
-              HA_DOCKER_USERNAME: <+inputs.docker_username>
+              HA_ALWAYS_RUN: <+input>
+              HA_DOCKER_USERNAME: <+input>
             command: |-
               STATE_FILE="${HARNESS_WORKSPACE:-.}/build-state.env"
               REPORT_FILE="${HARNESS_WORKSPACE:-.}/trivy-report-${HA_CONTAINER}.json"
@@ -56,9 +46,9 @@ template:
             shell: Sh
             envVariables:
               HA_CONTAINER: <+matrix.container>
-              HA_ALWAYS_RUN: <+inputs.always_run>
-              HA_MINIO_URL: <+inputs.minio_url>
-              HA_MINIO_USER: <+inputs.minio_user>
+              HA_ALWAYS_RUN: <+input>
+              HA_MINIO_URL: <+input>
+              HA_MINIO_USER: <+input>
               HA_MINIO_PASS: <+secrets.getValue("minio-pass")>
             command: |-
               STATE_FILE="${HARNESS_WORKSPACE:-.}/build-state.env"
@@ -69,13 +59,6 @@ template:
                   echo "[$HA_CONTAINER] Skipping upload, no build performed."
                   exit 0
                 fi
-              fi
-              echo "[DEBUG] HA_CONTAINER=${HA_CONTAINER:-<empty>}"
-              echo "[DEBUG] HA_MINIO_URL=${HA_MINIO_URL:-<empty>}"
-              echo "[DEBUG] HA_MINIO_USER=${HA_MINIO_USER:-<empty>}"
-              if [ -z "$HA_MINIO_URL" ] || [ "$HA_MINIO_URL" = "null" ]; then
-                echo "[ERROR] HA_MINIO_URL is empty or null. Check StepGroup template input mapping for minio_url and project variable values."
-                exit 1
               fi
               mc alias set minio "$HA_MINIO_URL" "$HA_MINIO_USER" "$HA_MINIO_PASS"
               mc cp "$REPORT_FILE" \

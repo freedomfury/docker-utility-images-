@@ -89,16 +89,16 @@ pipeline:
                             type: Run
                             spec:
                               envVariables:
-                                HA_ALWAYS_RUN: <+inputs.always_run>
-                                HA_DOCKER_USERNAME: <+inputs.docker_username>
+                                HA_ALWAYS_RUN: "false"
+                                HA_DOCKER_USERNAME: <+project.variables.dockeruser>
                         - step:
                             identifier: UploadTrivyReport
                             type: Run
                             spec:
                               envVariables:
-                                HA_ALWAYS_RUN: <+inputs.always_run>
-                                HA_MINIO_URL: <+inputs.minio_url>
-                                HA_MINIO_USER: <+inputs.minio_user>
+                                HA_ALWAYS_RUN: "false"
+                                HA_MINIO_URL: <+project.variables.miniourl>
+                                HA_MINIO_USER: <+project.variables.miniouser>
               - step:
                   type: Run
                   name: Push
