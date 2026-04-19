@@ -70,6 +70,13 @@ template:
                   exit 0
                 fi
               fi
+              echo "[DEBUG] HA_CONTAINER=${HA_CONTAINER:-<empty>}"
+              echo "[DEBUG] HA_MINIO_URL=${HA_MINIO_URL:-<empty>}"
+              echo "[DEBUG] HA_MINIO_USER=${HA_MINIO_USER:-<empty>}"
+              if [ -z "$HA_MINIO_URL" ] || [ "$HA_MINIO_URL" = "null" ]; then
+                echo "[ERROR] HA_MINIO_URL is empty or null. Check StepGroup template input mapping for minio_url and project variable values."
+                exit 1
+              fi
               mc alias set minio "$HA_MINIO_URL" "$HA_MINIO_USER" "$HA_MINIO_PASS"
               mc cp "$REPORT_FILE" \
                 "minio/global/harness/trivy/${HA_CONTAINER}/report.json"
