@@ -7,6 +7,19 @@ template:
   orgIdentifier: default
   spec:
     stageType: CI
+    variables:
+      - name: always_run
+        type: String
+        value: <+input>
+      - name: docker_username
+        type: String
+        value: <+input>
+      - name: minio_url
+        type: String
+        value: <+input>
+      - name: minio_user
+        type: String
+        value: <+input>
     steps:
       - step:
           type: Run
@@ -18,8 +31,8 @@ template:
             shell: Sh
             envVariables:
               HA_CONTAINER: <+matrix.container>
-              HA_ALWAYS_RUN: <+input>
-              HA_DOCKER_USERNAME: <+input>
+              HA_ALWAYS_RUN: <+stepGroup.variables.always_run>
+              HA_DOCKER_USERNAME: <+stepGroup.variables.docker_username>
             command: |-
               STATE_FILE="${HARNESS_WORKSPACE:-.}/build-state.env"
               REPORT_FILE="${HARNESS_WORKSPACE:-.}/trivy-report-${HA_CONTAINER}.json"
@@ -46,9 +59,9 @@ template:
             shell: Sh
             envVariables:
               HA_CONTAINER: <+matrix.container>
-              HA_ALWAYS_RUN: <+input>
-              HA_MINIO_URL: <+input>
-              HA_MINIO_USER: <+input>
+              HA_ALWAYS_RUN: <+stepGroup.variables.always_run>
+              HA_MINIO_URL: <+stepGroup.variables.minio_url>
+              HA_MINIO_USER: <+stepGroup.variables.minio_user>
               HA_MINIO_PASS: <+secrets.getValue("minio-pass")>
             command: |-
               STATE_FILE="${HARNESS_WORKSPACE:-.}/build-state.env"

@@ -66,7 +66,7 @@ pipeline:
                     shell: Sh
                     envVariables:
                       HA_CONTAINER: <+matrix.container>
-                      HA_DOCKER_USERNAME: <+project.variables.dockeruser>
+                      HA_DOCKER_USERNAME: <+variable.dockeruser>
                     command: |-
                       STATE_FILE="${HARNESS_WORKSPACE:-.}/build-state.env"
                       . lib/build-utils.sh
@@ -83,22 +83,20 @@ pipeline:
                     templateRef: trivyscanupload
                     versionLabel: "1"
                     templateInputs:
-                      steps:
-                        - step:
-                            identifier: TrivyScan
-                            type: Run
-                            spec:
-                              envVariables:
-                                HA_ALWAYS_RUN: "false"
-                                HA_DOCKER_USERNAME: <+project.variables.dockeruser>
-                        - step:
-                            identifier: UploadTrivyReport
-                            type: Run
-                            spec:
-                              envVariables:
-                                HA_ALWAYS_RUN: "false"
-                                HA_MINIO_URL: <+project.variables.miniourl>
-                                HA_MINIO_USER: <+project.variables.miniouser>
+                      type: StepGroup
+                      variables:
+                        - name: always_run
+                          type: String
+                          value: "false"
+                        - name: docker_username
+                          type: String
+                          value: <+variable.dockeruser>
+                        - name: minio_url
+                          type: String
+                          value: <+variable.miniourl>
+                        - name: minio_user
+                          type: String
+                          value: <+variable.miniouser>
               - step:
                   type: Run
                   name: Push
@@ -110,7 +108,7 @@ pipeline:
                     envVariables:
                       HA_CONTAINER: <+matrix.container>
                       HA_DOCKER_HUB_TOKEN: <+secrets.getValue("docker-hub-token")>
-                      HA_DOCKER_USERNAME: <+project.variables.dockeruser>
+                      HA_DOCKER_USERNAME: <+variable.dockeruser>
                     command: |-
                       STATE_FILE="${HARNESS_WORKSPACE:-.}/build-state.env"
                       . "$STATE_FILE"
