@@ -1,0 +1,34 @@
+inputSet:
+  name: main-pipeline-input-set.yaml
+  identifier: mainpipelineinputsetyaml
+  orgIdentifier: default
+  projectIdentifier: default_project
+  pipeline:
+    identifier: mainpipeline
+    stages:
+      - stage:
+          identifier: BuildAndPush
+          type: CI
+          spec:
+            execution:
+              steps:
+                - stepGroup:
+                    identifier: TrivyScanAndUpload
+                    template:
+                      templateInputs:
+                        steps:
+                          - step:
+                              identifier: TrivyScan
+                              type: Run
+                              spec:
+                                envVariables:
+                                  HA_ALWAYS_RUN: <+inputs.always_run>
+                                  HA_DOCKER_USERNAME: <+inputs.docker_username>
+                          - step:
+                              identifier: UploadTrivyReport
+                              type: Run
+                              spec:
+                                envVariables:
+                                  HA_ALWAYS_RUN: <+inputs.always_run>
+                                  HA_MINIO_URL: <+inputs.minio_url>
+                                  HA_MINIO_USER: <+inputs.minio_user>
