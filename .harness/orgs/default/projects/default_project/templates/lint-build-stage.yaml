@@ -40,7 +40,7 @@ template:
               identifier: Lint
               spec:
                 connectorRef: dockerdefault
-                image: hadolint/hadolint:latest
+                image: hadolint/hadolint:latest-alpine
                 shell: Sh
                 envVariables:
                   HA_CONTAINER: <+matrix.container>
