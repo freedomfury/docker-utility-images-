@@ -11,8 +11,8 @@ template:
     spec:
       cloneCodebase: true
       caching:
-        enabled: true
-        override: true
+        enabled: false
+        override: false
       buildIntelligence:
         enabled: false
       platform:
