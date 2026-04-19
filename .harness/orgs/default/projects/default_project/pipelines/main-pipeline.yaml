@@ -83,22 +83,16 @@ pipeline:
                     templateRef: trivyscanupload
                     versionLabel: "1"
                     templateInputs:
-                      steps:
-                        - step:
-                            identifier: TrivyScan
-                            type: Run
-                            spec:
-                              envVariables:
-                                HA_ALWAYS_RUN: <+inputs.always_run>
-                                HA_DOCKER_USERNAME: <+inputs.docker_username>
-                        - step:
-                            identifier: UploadTrivyReport
-                            type: Run
-                            spec:
-                              envVariables:
-                                HA_ALWAYS_RUN: <+inputs.always_run>
-                                HA_MINIO_URL: <+inputs.minio_url>
-                                HA_MINIO_USER: <+inputs.minio_user>
+                      spec:
+                        inputs:
+                          - name: always_run
+                            value: "false"
+                          - name: docker_username
+                            value: <+project.variables.dockeruser>
+                          - name: minio_url
+                            value: <+project.variables.miniourl>
+                          - name: minio_user
+                            value: <+project.variables.miniouser>
               - step:
                   type: Run
                   name: Push
