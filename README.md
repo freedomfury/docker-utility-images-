@@ -1,6 +1,6 @@
 # Docker Utility Images
 
-Monorepo for building, scanning, and publishing utility Docker containers via Harness CI/CD pipelines.
+Monorepo for building, scanning, and publishing utility Docker containers via GitHub Actions.
 
 ## Repository Structure
 
@@ -11,53 +11,51 @@ Monorepo for building, scanning, and publishing utility Docker containers via Ha
 ├── hello-c/                  # Placeholder container (to be replaced)
 ├── lib/
 │   └── build-utils.sh        # Shared bash functions (needs_build, do_build, do_push)
-├── bin/
-│   └── check-matrix.sh       # Matrix guard — fails if a container folder is missing from pipelines
-├── .harness/
-│   └── orgs/default/projects/default_project/
-│       ├── pipelines/
-│       │   ├── pr-pipeline.yaml         # PR validation — lint only
-│       │   ├── main-pipeline.yaml       # Merge to main — lint, build, scan, push
-│       │   └── scheduled-pipeline.yaml  # Weekly rebuild — unconditional build, scan, push
-│       └── templates/
-│           ├── lint-build-stage.yaml    # Reusable lint stage (shellcheck + hadolint)
-│           └── trivy-scan-upload.yaml   # Reusable Trivy scan + MinIO upload step group
+├── .github/
+│   └── workflows/
+│       ├── pr.yml            # PR validation — lint only
+│       ├── main.yml          # Push to main — lint, build-if-changed, scan, SBOM, push, release
+│       └── scheduled.yml     # Weekly rebuild — unconditional build, scan, SBOM, push
 └── docs/
+    └── idea.md               # Design document
 ```
 
 ### Conventions
 
-- Every folder at the root that is not `lib`, `bin`, `.harness`, `.git`, or `docs` is a container.
+- Every folder at the repo root that is not `lib`, `bin`, `.github`, `.git`, `docs`, or `exports` is a container.
 - Each container folder contains at minimum a `Dockerfile`.
-- `lib/` holds shared bash functions sourced by pipeline steps.
-- `bin/` holds standalone scripts executed directly by pipelines.
+- `lib/` holds shared bash functions sourced by workflow steps.
+- The matrix is generated dynamically by scanning the repo root — no hardcoded list to maintain.
 
-## Pipelines
+## Workflows
 
-### PR Pipeline
+### PR Workflow
 
 Runs on pull requests. **Lint only — no build, no push.**
 
-1. **Matrix Check** — verifies every container folder is in the pipeline matrix.
-2. **Shellcheck** — lints `lib/build-utils.sh` and `bin/check-matrix.sh`.
+1. **Discover** — scans root dirs dynamically and builds the container matrix.
+2. **Shellcheck** — lints `lib/build-utils.sh`.
 3. **Hadolint** — lints each container's Dockerfile.
 
-### Main Pipeline
+### Main Workflow
 
-Runs on merge to `main`. **Lint, then build/scan/push only if content changed.**
+Runs on push to `main`. **Lint → build-if-changed → scan → SBOM → push → release.**
 
-1. **Lint stage** — same as PR (matrix check, shellcheck, hadolint).
-2. **Build If Changed** — hashes the container folder, compares against the registry label via Skopeo. Builds only if changed.
-3. **Trivy Scan** — scans the built image, uploads JSON report to MinIO with a 7-day presigned URL.
-4. **Push** — pushes to Docker Hub if a build occurred.
+1. **Discover** — dynamic matrix generation.
+2. **Lint** — shellcheck + hadolint per container.
+3. **Build If Changed** — hashes the container folder, compares against the registry label via Skopeo. Builds only if changed.
+4. **Trivy Scan** — scans the built image, outputs JSON report.
+5. **SBOM** — generates a CycloneDX SBOM for the built image.
+6. **Push** — pushes to Docker Hub if a build occurred.
+7. **Release** — once all matrix jobs succeed, creates a date-stamped GitHub Release (`v2026.04.20-1430`) with all Trivy reports and SBOMs attached as assets.
 
-### Scheduled Pipeline
+### Scheduled Workflow
 
-Runs weekly (Monday 02:00 UTC). **Unconditional rebuild, scan, and push of all containers** to pick up base image security patches.
+Runs weekly (Monday 02:00 UTC). **Unconditional rebuild, scan, SBOM, and push of all containers** to pick up base image security patches. Supports `workflow_dispatch` for manual testing.
 
 ## Hash-Based Change Detection
 
-Change detection is registry-native and CI-agnostic — no dependency on git diff or Harness path filters.
+Change detection is registry-native and CI-agnostic — no dependency on git diff.
 
 1. Hash all files in the container folder: `find <dir> -type f | sort | xargs sha256sum | sha256sum`
 2. Bake the hash into the image as a Docker label: `build.source.hash=<hash>`
@@ -67,54 +65,24 @@ Change detection is registry-native and CI-agnostic — no dependency on git dif
 ## Adding a New Container
 
 1. Create a folder at the repo root with a `Dockerfile`.
-2. Add the folder name to the matrix list in all three pipeline YAMLs.
-3. Add it to `MATRIX_LIST` in `bin/check-matrix.sh`.
-4. Open a PR — the matrix guard will verify coverage.
+2. Open a PR — lint runs automatically against the new Dockerfile.
+3. Merge to main — the new container is built, scanned, pushed, and included in the release.
 
-If step 2 or 3 is forgotten, `check-matrix.sh` fails the pipeline with a clear error.
-
-## Environment Variable Convention
-
-All JEXL expressions (Harness runtime values) are bound in the `envVariables` section of each step. Bash command blocks contain zero JEXL. Variables use the `HA_` prefix (Harness Automation) to own the namespace:
-
-| Variable | Source |
-|---|---|
-| `HA_CONTAINER` | `<+matrix.container>` |
-| `HA_DOCKER_USERNAME` | `<+project.variables.dockeruser>` |
-| `HA_DOCKER_HUB_TOKEN` | `<+secrets.getValue("docker-hub-token")>` |
-| `HA_MINIO_URL` | `<+project.variables.miniourl>` |
-| `HA_MINIO_USER` | `<+project.variables.miniouser>` |
-| `HA_MINIO_PASS` | `<+secrets.getValue("minio-pass")>` |
-
-## Template Design
-
-Templates are pure functions — they declare explicit inputs and never reference project variables directly. Callers own the variable bindings:
-
-```yaml
-# Caller passes project variables as template inputs
-templateInputs:
-  spec:
-    inputs:
-      - name: docker_username
-        value: <+project.variables.dockeruser>
-```
+No matrix list to update. No guard script to maintain.
 
 ## Prerequisites
 
-Before running pipelines, ensure the following exist in Harness:
+Before running workflows, ensure the following exist on the repository:
 
-- **Secrets:** `docker-hub-token`, `minio-pass`
-- **Project variables:** `dockeruser`, `miniourl`, `miniouser`
-- **Connector:** `docker-default` (Docker Hub)
-- **Delegate:** `image-flow-delegate`
+- **Secrets:** `DOCKER_HUB_TOKEN`
+- **Variables:** `DOCKER_USERNAME` (set to your Docker Hub namespace)
 
 ## Dependencies
 
-| Tool | Image | Purpose |
+| Tool | How it runs | Purpose |
 |---|---|---|
-| Docker CLI | `docker:27-cli` | Build and push images |
-| Skopeo | (via `build-utils.sh`) | Inspect registry labels without pulling |
-| Hadolint | `hadolint/hadolint:latest` | Dockerfile linting |
-| Shellcheck | `koalaman/shellcheck-alpine:stable` | Bash script linting |
-| Trivy | `aquasec/trivy:latest` | Container vulnerability scanning |
-| MinIO Client | `minio/mc:latest` | Upload scan reports |
+| Docker CLI | Pre-installed on `ubuntu-latest` | Build and push images |
+| Skopeo | `apt-get install -y skopeo` | Inspect registry labels without pulling |
+| Hadolint | Downloaded at runtime | Dockerfile linting |
+| Shellcheck | Pre-installed on `ubuntu-latest` | Bash script linting |
+| Trivy | `aquasecurity/trivy-action` | Vulnerability scan + CycloneDX SBOM |

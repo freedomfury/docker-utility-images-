@@ -1,0 +1,46 @@
+name: PR
+
+on:
+    pull_request:
+
+jobs:
+    discover:
+        runs-on: ubuntu-latest
+        outputs:
+            matrix: ${{ steps.set-matrix.outputs.matrix }}
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Discover container directories
+              id: set-matrix
+              run: |
+                  EXCLUDED=".git .github lib bin docs exports"
+                  dirs=()
+                  for d in */; do
+                    name="${d%/}"
+                    skip=false
+                    for ex in $EXCLUDED; do [ "$name" = "$ex" ] && skip=true; done
+                    $skip || dirs+=("$name")
+                  done
+                  echo "matrix=$(jq -cn '$ARGS.positional' --args "${dirs[@]}")" >> "$GITHUB_OUTPUT"
+
+    lint:
+        needs: discover
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                container: ${{ fromJson(needs.discover.outputs.matrix) }}
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Shellcheck
+              run: shellcheck lib/build-utils.sh
+
+            - name: Install hadolint
+              run: |
+                  curl -sSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 \
+                    -o /usr/local/bin/hadolint
+                  chmod +x /usr/local/bin/hadolint
+
+            - name: Hadolint
+              run: hadolint ${{ matrix.container }}/Dockerfile

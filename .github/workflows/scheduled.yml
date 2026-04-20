@@ -1,0 +1,78 @@
+name: Scheduled Rebuild
+
+on:
+    schedule:
+        - cron: "0 2 * * 1" # Monday 02:00 UTC
+    workflow_dispatch:
+        # Allow manual trigger for testing
+
+jobs:
+    discover:
+        runs-on: ubuntu-latest
+        outputs:
+            matrix: ${{ steps.set-matrix.outputs.matrix }}
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Discover container directories
+              id: set-matrix
+              run: |
+                  EXCLUDED=".git .github lib bin docs exports"
+                  dirs=()
+                  for d in */; do
+                    name="${d%/}"
+                    skip=false
+                    for ex in $EXCLUDED; do [ "$name" = "$ex" ] && skip=true; done
+                    $skip || dirs+=("$name")
+                  done
+                  echo "matrix=$(jq -cn '$ARGS.positional' --args "${dirs[@]}")" >> "$GITHUB_OUTPUT"
+
+    rebuild:
+        needs: discover
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                container: ${{ fromJson(needs.discover.outputs.matrix) }}
+        env:
+            CONTAINER: ${{ matrix.container }}
+            DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME }}
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Build (unconditional)
+              run: |
+                  . lib/build-utils.sh
+                  export BUILD_HASH
+                  BUILD_HASH=$(find "$CONTAINER" -type f | sort | xargs sha256sum | sha256sum | awk '{print $1}')
+                  do_build "$CONTAINER" "$DOCKER_USERNAME"
+
+            - name: Trivy scan
+              uses: aquasecurity/trivy-action@0.30.0
+              with:
+                  image-ref: ${{ vars.DOCKER_USERNAME }}/${{ matrix.container }}:latest
+                  format: json
+                  output: trivy-report-${{ matrix.container }}.json
+                  exit-code: "0"
+
+            - name: Generate SBOM
+              uses: aquasecurity/trivy-action@0.30.0
+              with:
+                  image-ref: ${{ vars.DOCKER_USERNAME }}/${{ matrix.container }}:latest
+                  format: cyclonedx
+                  output: sbom-${{ matrix.container }}.cdx.json
+                  exit-code: "0"
+
+            - name: Docker push
+              run: |
+                  echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                  . lib/build-utils.sh
+                  do_push "$CONTAINER" "$DOCKER_USERNAME"
+
+            - name: Upload artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: artifacts-${{ matrix.container }}
+                  path: |
+                      trivy-report-${{ matrix.container }}.json
+                      sbom-${{ matrix.container }}.cdx.json
+                  retention-days: 90
