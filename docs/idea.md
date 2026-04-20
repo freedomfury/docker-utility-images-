@@ -56,6 +56,7 @@ Triggers on `push` to `main`. **Lint → build-if-changed → scan → SBOM → 
 3. `build-and-push` (matrix: container, needs: lint)
    - Install skopeo
    - **Build If Changed** — sources `lib/build-utils.sh`, calls `needs_build()` which hashes the container folder and compares against the `build.source.hash` Docker label on the registry image via Skopeo. Builds with `do_build()` only if changed.
+   - **Smoke Test** *(not yet implemented — add when containers become real workloads)* — if built: `docker run --rm <image>` and assert exit code 0. For long-running services: run detached, hit a health endpoint, then stop. Lives between Build and Trivy scan, gated on `BUILD_NEEDED == 'true'`.
    - **Trivy Scan** — if built: `trivy image --format json --output trivy-report-<container>.json`
    - **SBOM** — if built: `trivy image --format cyclonedx --output sbom-<container>.cdx.json`
    - **Docker Push** — if built: `do_push()` from `build-utils.sh`
