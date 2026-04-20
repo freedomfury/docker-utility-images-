@@ -9,7 +9,7 @@ jobs:
         outputs:
             matrix: ${{ steps.set-matrix.outputs.matrix }}
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6.0.2
 
             - name: Discover container directories
               id: set-matrix
@@ -31,7 +31,7 @@ jobs:
             matrix:
                 container: ${{ fromJson(needs.discover.outputs.matrix) }}
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6.0.2
 
             - name: Shellcheck
               run: shellcheck lib/build-utils.sh

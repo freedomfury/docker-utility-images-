@@ -11,7 +11,7 @@ jobs:
         outputs:
             matrix: ${{ steps.set-matrix.outputs.matrix }}
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6.0.2
 
             - name: Discover container directories
               id: set-matrix
@@ -33,7 +33,7 @@ jobs:
             matrix:
                 container: ${{ fromJson(needs.discover.outputs.matrix) }}
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6.0.2
 
             - name: Shellcheck
               run: shellcheck lib/build-utils.sh
@@ -57,7 +57,7 @@ jobs:
             CONTAINER: ${{ matrix.container }}
             DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME }}
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6.0.2
 
             - name: Install skopeo
               run: sudo apt-get update && sudo apt-get install -y skopeo
@@ -100,7 +100,7 @@ jobs:
 
             - name: Upload artifacts
               if: env.BUILD_NEEDED == 'true'
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7.0.1
               with:
                   name: artifacts-${{ matrix.container }}
                   path: |
@@ -115,7 +115,7 @@ jobs:
             contents: write
         steps:
             - name: Download all artifacts
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@v8.0.1
               with:
                   path: release-assets
                   merge-multiple: true
